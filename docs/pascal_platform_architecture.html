@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pascal Platform — Kiến Trúc 10 Năm</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --bg2: #161b27;
+  --bg3: #1e2435;
+  --border: #2a3148;
+  --border2: #3a4560;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #64748b;
+  --purple: #7c6ff7;
+  --purple-light: #a89ef9;
+  --purple-dim: #2d2660;
+  --teal: #2dd4bf;
+  --teal-dim: #134e4a;
+  --amber: #fbbf24;
+  --amber-dim: #451a03;
+  --green: #4ade80;
+  --green-dim: #14532d;
+  --coral: #f87171;
+  --coral-dim: #450a0a;
+  --blue: #60a5fa;
+  --blue-dim: #1e3a5f;
+  --pink: #f472b6;
+  --mono: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Layout */
+.shell { display: flex; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-logo {
+  padding: 20px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-logo .name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--purple-light);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.sidebar-logo .sub {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+.nav-section {
+  padding: 12px 8px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding-left: 12px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  margin: 1px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text2);
+  font-size: 13px;
+  transition: all .15s;
+  border: none;
+  background: transparent;
+  width: calc(100% - 12px);
+  text-align: left;
+}
+
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: var(--purple-dim); color: var(--purple-light); font-weight: 500; }
+
+.nav-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Main */
+.main {
+  flex: 1;
+  overflow: hidden;
+}
+
+.panel { display: none; height: 100vh; overflow-y: auto; }
+.panel.active { display: block; }
+
+/* Panel header */
+.panel-header {
+  padding: 28px 36px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.panel-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.panel-sub {
+  font-size: 13px;
+  color: var(--text3);
+  margin-top: 4px;
+}
+
+.panel-body { padding: 28px 36px 60px; }
+
+/* Cards */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+.card-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+
+/* Code blocks */
+.code {
+  background: #0a0d14;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 18px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-x: auto;
+  margin-bottom: 14px;
+  position: relative;
+}
+
+.code .kw  { color: #c792ea; }
+.code .str { color: #c3e88d; }
+.code .cm  { color: #546e7a; font-style: italic; }
+.code .cl  { color: #ffcb6b; }
+.code .fn  { color: #82aaff; }
+.code .nb  { color: #f78c6c; }
+.code .op  { color: #89ddff; }
+.code .ph  { color: #f07178; }
+
+.code-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 6px;
+}
+
+/* Section title */
+.section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 24px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-title:first-child { margin-top: 0; }
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: .03em;
+}
+
+/* Table */
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+
+.tbl th {
+  text-align: left;
+  padding: 8px 10px;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--text3);
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.tbl td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--bg3); }
+
+/* Flow */
+.flow { display: flex; flex-direction: column; gap: 0; }
+.flow-row { display: flex; gap: 0; align-items: center; }
+.flow-box {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.flow-arrow {
+  color: var(--text3);
+  font-size: 16px;
+  margin: 0 8px;
+  flex-shrink: 0;
+}
+
+/* Architecture diagram */
+.arch-layer {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+
+.arch-layer:hover { border-color: var(--border2); }
+.arch-layer.open { border-color: var(--purple); }
+
+.arch-hd {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg2);
+  transition: background .15s;
+}
+
+.arch-layer.open .arch-hd { background: var(--bg3); }
+
+.arch-num {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.arch-title { font-size: 13px; font-weight: 600; flex: 1; }
+.arch-stack { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+.arch-body {
+  display: none;
+  padding: 16px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.arch-layer.open .arch-body { display: block; }
+
+/* Principle cards */
+.principle {
+  display: flex;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.principle-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.principle-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+.principle-desc { font-size: 12px; color: var(--text3); line-height: 1.5; }
+
+/* Phase timeline */
+.timeline { display: flex; gap: 0; margin-bottom: 20px; position: relative; }
+.timeline::before {
+  content: '';
+  position: absolute;
+  top: 20px; left: 20px; right: 20px;
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+
+.phase {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.phase-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  margin: 14px auto 12px;
+  position: relative;
+}
+
+.phase-dot::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  opacity: .2;
+}
+
+.phase-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 0 4px;
+  font-size: 12px;
+}
+
+.phase-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text3);
+  margin-bottom: 4px;
+}
+
+.phase-name { font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+
+.phase-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--text2);
+  margin-bottom: 3px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.phase-bullet { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+
+/* File tree */
+.tree {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--text2);
+}
+
+.tree .dir { color: var(--amber); font-weight: 600; }
+.tree .file { color: var(--blue); }
+.tree .cmt { color: var(--text3); }
+.tree .imp { color: var(--coral); font-weight: 600; }
+
+/* Highlight box */
+.highlight {
+  border-left: 3px solid var(--purple);
+  background: var(--purple-dim);
+  border-radius: 0 8px 8px 0;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--purple-light);
+}
+
+.warning {
+  border-left: 3px solid var(--amber);
+  background: var(--amber-dim);
+  border-radius: 0 8px 8px 0;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--amber);
+}
+
+/* Stack comparison */
+.stack-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.stack-row:last-child { border-bottom: none; }
+.stack-layer { width: 90px; font-size: 11px; color: var(--text3); flex-shrink: 0; }
+.stack-tech { font-size: 12px; font-weight: 600; font-family: var(--mono); }
+.stack-why { font-size: 11px; color: var(--text3); margin-left: auto; }
+
+/* Decision table */
+.decision {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.decision.yes { background: var(--green-dim); color: var(--green); }
+.decision.no  { background: var(--coral-dim); color: var(--coral); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+p { font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="name">Pascal Platform</div>
+    <div class="sub">Kiến trúc 10 năm · Laravel ERP</div>
+  </div>
+
+  <div class="nav-section">Tổng quan</div>
+  <button class="nav-item active" onclick="show('overview')">
+    <div class="nav-dot" style="background:#7c6ff7"></div> Tổng quan kiến trúc
+  </button>
+  <button class="nav-item" onclick="show('principles')">
+    <div class="nav-dot" style="background:#2dd4bf"></div> 5 Nguyên tắc cốt lõi
+  </button>
+  <button class="nav-item" onclick="show('stack')">
+    <div class="nav-dot" style="background:#fbbf24"></div> Tech stack
+  </button>
+
+  <div class="nav-section">Core Platform</div>
+  <button class="nav-item" onclick="show('structure')">
+    <div class="nav-dot" style="background:#60a5fa"></div> Folder structure
+  </button>
+  <button class="nav-item" onclick="show('doctype')">
+    <div class="nav-dot" style="background:#f472b6"></div> DocType Engine
+  </button>
+  <button class="nav-item" onclick="show('eventbus')">
+    <div class="nav-dot" style="background:#4ade80"></div> Event Bus
+  </button>
+  <button class="nav-item" onclick="show('permission')">
+    <div class="nav-dot" style="background:#f87171"></div> Permission Engine
+  </button>
+  <button class="nav-item" onclick="show('tenant')">
+    <div class="nav-dot" style="background:#fbbf24"></div> Multi-tenant
+  </button>
+
+  <div class="nav-section">Platform Layer</div>
+  <button class="nav-item" onclick="show('api')">
+    <div class="nav-dot" style="background:#7c6ff7"></div> Auto API + Versioning
+  </button>
+  <button class="nav-item" onclick="show('mcp')">
+    <div class="nav-dot" style="background:#2dd4bf"></div> MCP Layer (AI-native)
+  </button>
+  <button class="nav-item" onclick="show('audit')">
+    <div class="nav-dot" style="background:#f472b6"></div> Audit Trail
+  </button>
+
+  <div class="nav-section">Triển khai</div>
+  <button class="nav-item" onclick="show('migrations')">
+    <div class="nav-dot" style="background:#60a5fa"></div> Migration files
+  </button>
+  <button class="nav-item" onclick="show('roadmap')">
+    <div class="nav-dot" style="background:#4ade80"></div> Roadmap 10 năm
+  </button>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+<!-- ===== OVERVIEW ===== -->
+<div id="overview" class="panel active">
+  <div class="panel-header">
+    <div class="panel-title">Kiến trúc tổng thể</div>
+    <div class="panel-sub">Laravel ERP Platform · Thiết kế cho 10 năm · Pascal Group</div>
+  </div>
+  <div class="panel-body">
+
+    <div class="highlight">
+      Triết lý: <strong>API-first · Event-driven · Metadata-driven · AI-native · Multi-tenant từ ngày 1</strong>
+    </div>
+
+    <div class="section-title">7 tầng kiến trúc — click để xem chi tiết</div>
+
+    <div class="arch-layer open" onclick="toggle(this)">
+      <div class="arch-hd">
+        <div class="arch-num" style="background:#2d2660;color:#a89ef9">L7</div>
+        <div>
+          <div class="arch-title">AI Orchestration Layer</div>
+          <div class="arch-stack">Claude API · Local LLM · Multi-agent · MCP Server</div>
+        </div>
+        <span class="badge" style="background:#2d2660;color:#a89ef9">AI-native</span>
+      </div>
+      <div class="arch-body">
+        <p>Tầng AI không phải là feature bolt-on — nó là first-class citizen. Mọi DocType đều có thể được AI agent đọc/ghi thông qua MCP protocol. Không cần viết integration code cho từng use case.</p>
+        <div class="card-grid">
+          <div class="card">
+            <div class="card-title" style="color:var(--purple-light)">Claude API (Cloud)</div>
+            <p style="margin:0;font-size:12px">Complex reasoning, document analysis, workflow decisions. Dùng khi cần intelligence cao.</p>
+          </div>
+          <div class="card">
+            <div class="card-title" style="color:var(--teal)">Local LLM (On-premise)</div>
+            <p style="margin:0;font-size:12px">Ollama + Llama3 cho data nhạy cảm. Không ra internet. Phù hợp với tài chính, HR.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arch-layer" onclick="toggle(this)">
+      <div class="arch-hd">
+        <div class="arch-num" style="background:#134e4a;color:#2dd4bf">L6</div>
+        <div>
+          <div class="arch-title">API Gateway Layer</div>
+          <div class="arch-stack">REST v1/v2 · GraphQL · WebSocket · MCP endpoints</div>
+        </div>
+        <span class="badge" style="background:#134e4a;color:#2dd4bf">Versioned</span>
+      </div>
+      <div class="arch-body">
+        <p>Tất cả client (web, mobile, AI agent, third-party) đều đi qua API Gateway. Business logic không bao giờ bị expose trực tiếp. Versioning từ ngày 1 để không bao giờ break client.</p>
+        <div class="code">
+<span class="cm">// routes/api.php — versioned từ ngày 1</span>
+<span class="cl">Route</span>::<span class="fn">prefix</span>(<span class="str">'v1'</span>)-><span class="fn">group</span>(<span class="fn">base_path</span>(<span class="str">'routes/api/v1.php'</span>));
+<span class="cl">Route</span>::<span class="fn">prefix</span>(<span class="str">'v2'</span>)-><span class="fn">group</span>(<span class="fn">base_path</span>(<span class="str">'routes/api/v2.php'</span>));
+
+<span class="cm">// Mọi route đều có: auth + tenant + permission + throttle</span>
+<span class="cl">Route</span>::<span class="fn">middleware</span>([
+    <span class="str">'auth:sanctum'</span>,
+    <span class="str">'tenant.init'</span>,
+    <span class="str">'doctype.permission'</span>,
+    <span class="str">'throttle:api'</span>,
+])-><span class="fn">group</span>(<span class="kw">function</span>() {
+    <span class="cm">// /api/v1/resource/{doctype}</span>
+    <span class="cl">Route</span>::<span class="fn">apiResource</span>(<span class="str">'resource/{doctype}'</span>, <span class="cl">ResourceController</span>::<span class="kw">class</span>);
+    <span class="cl">Route</span>::<span class="fn">post</span>(<span class="str">'resource/{doctype}/{name}/submit'</span>, [<span class="cl">ResourceController</span>::<span class="kw">class</span>, <span class="str">'submit'</span>]);
+    <span class="cl">Route</span>::<span class="fn">post</span>(<span class="str">'resource/{doctype}/{name}/cancel'</span>, [<span class="cl">ResourceController</span>::<span class="kw">class</span>, <span class="str">'cancel'</span>]);
+
+    <span class="cm">// MCP endpoint cho AI agents</span>
+    <span class="cl">Route</span>::<span class="fn">post</span>(<span class="str">'mcp/tools'</span>,    [<span class="cl">MCPController</span>::<span class="kw">class</span>, <span class="str">'listTools'</span>]);
+    <span class="cl">Route</span>::<span class="fn">post</span>(<span class="str">'mcp/execute'</span>, [<span class="cl">MCPController</span>::<span class="kw">class</span>, <span class="str">'execute'</span>]);
+});</div>
+      </div>
+    </div>
+
+    <div class="arch-layer" onclick="toggle(this)">
+      <div class="arch-hd">
+        <div class="arch-num" style="background:#1e3a5f;color:#60a5fa">L5</div>
+        <div>
+          <div class="arch-title">Core Platform — Laravel</div>
+          <div class="arch-stack">DocType Engine · Event Bus · Permission · Workflow · Audit</div>
+        </div>
+        <span class="badge" style="background:#1e3a5f;color:#60a5fa">Heartbeat</span>
+      </div>
+      <div class="arch-body">
+        <p>Đây là "trái tim" của toàn bộ platform. Không chứa business logic — chỉ chứa engine. Business logic nằm trong modules.</p>
+        <div class="card-grid-3">
+          <div class="card" style="border-color:var(--purple)">
+            <div class="card-title" style="color:var(--purple-light)">DocType Engine</div>
+            <p style="font-size:11px;margin:0">Metadata-driven. Mọi entity định nghĩa qua DB, không phải code.</p>
+          </div>
+          <div class="card" style="border-color:var(--green)">
+            <div class="card-title" style="color:var(--green)">Event Bus</div>
+            <p style="font-size:11px;margin:0">Loose coupling. Mọi side effect đi qua events. Modules không biết nhau.</p>
+          </div>
+          <div class="card" style="border-color:var(--amber)">
+            <div class="card-title" style="color:var(--amber)">Permission Engine</div>
+            <p style="font-size:11px;margin:0">Field-level RBAC. Role → DocType → Field → Action.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arch-layer" onclick="toggle(this)">
+      <div class="arch-hd">
+        <div class="arch-num" style="background:#14532d;color:#4ade80">L4</div>
+        <div>
+          <div class="arch-title">Business Modules</div>
+          <div class="arch-stack">Accounting · Inventory · HR · CRM · Workflow · Custom</div>
+        </div>
+        <span class="badge" style="background:#14532d;color:#4ade80">Pluggable</span>
+      </div>
+      <div class="arch-body">
+        <p>Mỗi module là Laravel package độc lập. Core không biết gì về Accounting hay Inventory. Modules đăng ký vào Core qua ServiceProvider.</p>
+        <div class="code">
+<span class="cm">// Mỗi module chỉ cần implement interface này</span>
+<span class="kw">interface</span> <span class="cl">DocumentController</span> {
+    <span class="kw">public function</span> <span class="fn">validate</span>(<span class="cl">Document</span> $doc): <span class="nb">void</span>;
+    <span class="kw">public function</span> <span class="fn">beforeSave</span>(<span class="cl">Document</span> $doc): <span class="nb">void</span>;
+    <span class="kw">public function</span> <span class="fn">onSubmit</span>(<span class="cl">Document</span> $doc): <span class="nb">void</span>;
+    <span class="kw">public function</span> <span class="fn">onCancel</span>(<span class="cl">Document</span> $doc): <span class="nb">void</span>;
+}
+
+<span class="cm">// Đăng ký trong ServiceProvider của module</span>
+<span class="cl">DocTypeRegistry</span>::<span class="fn">register</span>(<span class="str">'sales_invoice'</span>, <span class="cl">SalesInvoiceController</span>::<span class="kw">class</span>);
+        </div>
+      </div>
+    </div>
+
+    <div class="arch-layer" onclick="toggle(this)">
+      <div class="arch-hd">
+        <div class="arch-num" style="background:#450a0a;color:#f87171">L3</div>
+        <div>
+          <div class="arch-title">Queue & Async Layer</div>
+          <div class="arch-stack">Redis · Laravel Horizon · Laravel Reverb (WebSocket)</div>
+        </div>
+        <span class="badge" style="background:#450a0a;color:#f87171">Async</span>
+      </div>
+      <div class="arch-body">
+        <p>Mọi side effect nặng (GL posting, email, stock update, AI processing) đều chạy async qua Queue. UI không bao giờ chờ. Reverb cho realtime notifications.</p>
+      </div>
+    </div>
+
+    <div class="arch-layer" onclick="toggle(this)">
+      <div class="arch-hd">
+        <div class="arch-num" style="background:#451a03;color:#fbbf24">L2</div>
+        <div>
+          <div class="arch-title">Multi-tenant Layer</div>
+          <div class="arch-stack">stancl/tenancy · Database-per-tenant · Central DB</div>
+        </div>
+        <span class="badge" style="background:#451a03;color:#fbbf24">SaaS-ready</span>
+      </div>
+      <div class="arch-body">
+        <p>Mỗi subsidiary của Pascal Group có database riêng. Central DB chứa tenant registry, user global, billing. Cross-tenant queries cho holding dashboard.</p>
+      </div>
+    </div>
+
+    <div class="arch-layer" onclick="toggle(this)">
+      <div class="arch-hd">
+        <div class="arch-num" style="background:#1e2435;color:#94a3b8">L1</div>
+        <div>
+          <div class="arch-title">Data Layer</div>
+          <div class="arch-stack">MySQL · Redis · ClickHouse · Qdrant · Meilisearch</div>
+        </div>
+        <span class="badge" style="background:#1e2435;color:#94a3b8">Polyglot</span>
+      </div>
+      <div class="arch-body">
+        <p>Không phụ thuộc vào một database duy nhất. Mỗi loại data dùng đúng storage cho nó:</p>
+        <table class="tbl">
+          <tr><th>Storage</th><th>Dùng cho</th><th>Lý do</th></tr>
+          <tr><td>MySQL 8</td><td>Transactional data</td><td>ACID, proven, familiar</td></tr>
+          <tr><td>Redis</td><td>Cache, Queue, Sessions</td><td>Sub-ms latency</td></tr>
+          <tr><td>ClickHouse</td><td>Analytics, Reports</td><td>100x nhanh hơn MySQL cho aggregation</td></tr>
+          <tr><td>Qdrant</td><td>AI embeddings, Semantic search</td><td>Self-hostable vector DB</td></tr>
+          <tr><td>Meilisearch</td><td>Full-text search</td><td>Self-hostable, Vietnamese support</td></tr>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== PRINCIPLES ===== -->
+<div id="principles" class="panel">
+  <div class="panel-header">
+    <div class="panel-title">5 Nguyên tắc kiến trúc bất biến</div>
+    <div class="panel-sub">Những quyết định này không được thay đổi sau khi đã chọn</div>
+  </div>
+  <div class="panel-body">
+
+    <div class="warning">
+      Rủi ro lớn nhất không phải chọn sai technology — mà là vi phạm một trong 5 nguyên tắc này trong quá trình phát triển.
+    </div>
+
+    <div class="principle">
+      <div class="principle-icon" style="background:#2d2660">🏗</div>
+      <div>
+        <div class="principle-title">1. API-first, không có exception</div>
+        <div class="principle-desc">Mọi business logic phải đi qua API. UI chỉ là một client như bất kỳ client nào khác. Không được phép viết logic trong Controller, Blade, hay Livewire component. Khi bạn cần thay Vue bằng React 5 năm nữa — chỉ mất 3 tháng thay frontend, không phải rewrite toàn bộ.</div>
+      </div>
+    </div>
+
+    <div class="principle">
+      <div class="principle-icon" style="background:#14532d">⚡</div>
+      <div>
+        <div class="principle-title">2. Event-driven cho mọi side effect</div>
+        <div class="principle-desc">Khi Invoice được submit, KHÔNG được gọi trực tiếp sendEmail(), updateStock(), postGL(). Thay vào đó dispatch InvoiceSubmitted event. Mọi module subscribe và tự xử lý. 5 năm nữa thêm AI module — chỉ cần thêm listener, không sửa một dòng code cũ nào.</div>
+      </div>
+    </div>
+
+    <div class="principle">
+      <div class="principle-icon" style="background:#1e3a5f">🗃</div>
+      <div>
+        <div class="principle-title">3. Metadata-driven đến cùng</div>
+        <div class="principle-desc">Càng nhiều thứ định nghĩa qua metadata (DocType, DocField, Permission, Workflow), platform càng sống lâu. Business user có thể thêm custom field, tạo workflow mới, đổi permission — không cần developer, không cần deploy. ERPNext sống 15 năm vì nguyên tắc này.</div>
+      </div>
+    </div>
+
+    <div class="principle">
+      <div class="principle-icon" style="background:#134e4a">🤖</div>
+      <div>
+        <div class="principle-title">4. MCP-ready từ architecture</div>
+        <div class="principle-desc">Model Context Protocol là chuẩn mở đang trở thành cách AI agents tương tác với hệ thống. Nếu platform expose MCP endpoints ngay từ đầu, 5 năm nữa bất kỳ AI agent nào cũng có thể tạo Invoice, approve workflow, query báo cáo — mà không cần viết thêm một dòng integration code nào.</div>
+      </div>
+    </div>
+
+    <div class="principle">
+      <div class="principle-icon" style="background:#450a0a">📋</div>
+      <div>
+        <div class="principle-title">5. Audit trail mọi thứ, từ ngày 1</div>
+        <div class="principle-desc">Mọi thay đổi data phải được ghi lại: ai sửa, khi nào, trước/sau là gì, từ IP nào. Không phải vì compliance — mà vì 2 năm nữa sẽ có lúc bạn cần biết tại sao số liệu sai. Và khi không có audit trail, bạn không thể biết. Thêm sau rất khó — làm từ đầu rất dễ.</div>
+      </div>
+    </div>
+
+    <div class="section-title">Checklist quyết định hàng ngày</div>
+
+    <div class="decision yes">✓ Tôi đang gọi API từ UI — không viết logic trong component</div>
+    <div class="decision yes">✓ Tôi đang dispatch Event thay vì gọi trực tiếp service khác</div>
+    <div class="decision yes">✓ Config/Rule này có thể định nghĩa qua metadata không?</div>
+    <div class="decision yes">✓ Action này đã được audit log chưa?</div>
+    <div class="decision yes">✓ API này đã có version prefix chưa?</div>
+    <div class="decision no">✗ Tôi đang hardcode business rule trong code</div>
+    <div class="decision no">✗ Tôi đang gọi thẳng từ module này sang module khác</div>
+    <div class="decision no">✗ Tôi đang xây K8s/microservice khi chỉ có 2 tenant</div>
+
+  </div>
+</div>
+
+<!-- ===== STACK ===== -->
+<div id="stack" class="panel">
+  <div class="panel-header">
+    <div class="panel-title">Tech Stack — Boring Technology wins</div>
+    <div class="panel-sub">Chọn thứ đã proven và có momentum lớn, không phải thứ mới nhất</div>
+  </div>
+  <div class="panel-body">
+
+    <div class="section-title">Backend</div>
+    <div class="card">
+      <div class="stack-row"><div class="stack-layer">Core</div><div class="stack-tech" style="color:var(--coral)">Laravel 11+</div><div class="stack-why">15 năm, community VN mạnh, không đi đâu cả</div></div>
+      <div class="stack-row"><div class="stack-layer">Multi-tenant</div><div class="stack-tech" style="color:var(--amber)">stancl/tenancy</div><div class="stack-why">Database-per-tenant, battle-tested</div></div>
+      <div class="stack-row"><div class="stack-layer">Permission</div><div class="stack-tech" style="color:var(--green)">spatie/permission</div><div class="stack-why">Industry standard, RBAC bài bản</div></div>
+      <div class="stack-row"><div class="stack-layer">Queue</div><div class="stack-tech" style="color:var(--purple-light)">Laravel Horizon</div><div class="stack-why">Redis-backed, dashboard đẹp, reliable</div></div>
+      <div class="stack-row"><div class="stack-layer">WebSocket</div><div class="stack-tech" style="color:var(--blue)">Laravel Reverb</div><div class="stack-why">Native, self-hostable, thay thế Pusher</div></div>
+      <div class="stack-row"><div class="stack-layer">Search</div><div class="stack-tech" style="color:var(--teal)">Laravel Scout + Meilisearch</div><div class="stack-why">Hỗ trợ tiếng Việt, self-hostable</div></div>
+    </div>
+
+    <div class="section-title">Frontend</div>
+    <div class="card">
+      <div class="stack-row"><div class="stack-layer">Admin UI</div><div class="stack-tech" style="color:var(--coral)">Filament v3</div><div class="stack-why">PHP-first, schema-driven, gần ERPNext nhất</div></div>
+      <div class="stack-row"><div class="stack-layer">Reactive</div><div class="stack-tech" style="color:var(--blue)">Livewire v3 + Alpine.js</div><div class="stack-why">Không cần build pipeline phức tạp</div></div>
+      <div class="stack-row"><div class="stack-layer">SPA option</div><div class="stack-tech" style="color:var(--green)">Vue 3 + Inertia.js</div><div class="stack-why">Khi cần UX phức tạp hơn Livewire</div></div>
+      <div class="stack-row"><div class="stack-layer">Mobile</div><div class="stack-tech" style="color:var(--purple-light)">Flutter (future)</div><div class="stack-why">Cross-platform, dùng chung API</div></div>
+    </div>
+
+    <div class="section-title">Data & Infrastructure</div>
+    <div class="card">
+      <div class="stack-row"><div class="stack-layer">Transactional</div><div class="stack-tech" style="color:var(--amber)">MySQL 8 / MariaDB</div><div class="stack-why">ACID, proven, familiar với team VN</div></div>
+      <div class="stack-row"><div class="stack-layer">Cache/Queue</div><div class="stack-tech" style="color:var(--coral)">Redis 7</div><div class="stack-why">Sub-ms, Schema cache, Job queue</div></div>
+      <div class="stack-row"><div class="stack-layer">Analytics</div><div class="stack-tech" style="color:var(--teal)">ClickHouse</div><div class="stack-why">100x MySQL cho aggregation, Cloudflare/Uber dùng</div></div>
+      <div class="stack-row"><div class="stack-layer">Vector DB</div><div class="stack-tech" style="color:var(--green)">Qdrant</div><div class="stack-why">Self-hostable, cho AI semantic search</div></div>
+      <div class="stack-row"><div class="stack-layer">AI Cloud</div><div class="stack-tech" style="color:var(--purple-light)">Claude API (Anthropic)</div><div class="stack-why">Best reasoning, MCP native</div></div>
+      <div class="stack-row"><div class="stack-layer">AI Local</div><div class="stack-tech" style="color:var(--blue)">Ollama + Llama3</div><div class="stack-why">On-premise cho data nhạy cảm</div></div>
+      <div class="stack-row"><div class="stack-layer">Monitoring</div><div class="stack-tech" style="color:var(--amber)">Grafana + Prometheus</div><div class="stack-why">Self-hostable, industry standard</div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== STRUCTURE ===== -->
+<div id="structure" class="panel">
+  <div class="panel-header">
+    <div class="panel-title">Folder Structure</div>
+    <div class="panel-sub">Monorepo với module system — mỗi module là package độc lập</div>
+  </div>
+  <div class="panel-body">
+
+    <div class="card">
+      <div class="tree">
+<span class="dir">pascal-platform/</span><br>
+├── <span class="dir">app/</span><br>
+│   ├── <span class="dir">Core/</span>                        <span class="cmt">← Engine layer, không có business logic</span><br>
+│   │   ├── <span class="dir">Models/</span><br>
+│   │   │   ├── <span class="file imp">DocType.php</span>           <span class="cmt">← định nghĩa entity</span><br>
+│   │   │   ├── <span class="file imp">DocField.php</span>          <span class="cmt">← fields + types</span><br>
+│   │   │   ├── <span class="file imp">DocPermission.php</span>     <span class="cmt">← RBAC per field</span><br>
+│   │   │   └── <span class="file">Document.php</span>           <span class="cmt">← generic document model</span><br>
+│   │   ├── <span class="dir">Services/</span><br>
+│   │   │   ├── <span class="file imp">DocTypeRegistry.php</span>   <span class="cmt">← load/cache schema từ Redis</span><br>
+│   │   │   ├── <span class="file imp">DocumentService.php</span>   <span class="cmt">← generic CRUD + lifecycle</span><br>
+│   │   │   ├── <span class="file imp">PermissionService.php</span> <span class="cmt">← field-level permission check</span><br>
+│   │   │   ├── <span class="file imp">AuditService.php</span>      <span class="cmt">← ghi audit trail mọi thứ</span><br>
+│   │   │   └── <span class="file">WorkflowService.php</span>    <span class="cmt">← approval chain engine</span><br>
+│   │   ├── <span class="dir">Events/</span>                    <span class="cmt">← platform-level events</span><br>
+│   │   ├── <span class="dir">Contracts/</span>                 <span class="cmt">← interfaces mọi module phải implement</span><br>
+│   │   └── <span class="file">CoreServiceProvider.php</span><br>
+│   │<br>
+│   ├── <span class="dir">MCP/</span>                         <span class="cmt">← AI Agent integration layer</span><br>
+│   │   ├── <span class="file imp">MCPServer.php</span>             <span class="cmt">← expose platform qua MCP protocol</span><br>
+│   │   ├── <span class="file">ToolRegistry.php</span><br>
+│   │   └── <span class="file">MCPController.php</span><br>
+│   │<br>
+│   └── <span class="dir">Http/</span><br>
+│       ├── <span class="dir">Controllers/Api/V1/</span><br>
+│       │   └── <span class="file imp">ResourceController.php</span> <span class="cmt">← generic CRUD endpoint</span><br>
+│       └── <span class="dir">Middleware/</span><br>
+│           ├── <span class="file">InitializeTenancy.php</span><br>
+│           └── <span class="file">DocTypePermission.php</span><br>
+│<br>
+├── <span class="dir">modules/</span>                        <span class="cmt">← business logic, pluggable</span><br>
+│   ├── <span class="dir">Accounting/</span><br>
+│   │   ├── <span class="dir">Controllers/</span>               <span class="cmt">← SalesInvoiceController, GLController...</span><br>
+│   │   ├── <span class="dir">Events/</span>                    <span class="cmt">← InvoiceSubmitted, PaymentReceived...</span><br>
+│   │   ├── <span class="dir">Listeners/</span><br>
+│   │   ├── <span class="dir">Fixtures/</span>                  <span class="cmt">← default DocType definitions (JSON)</span><br>
+│   │   ├── <span class="dir">Jobs/</span>                      <span class="cmt">← PostGLEntries, SendInvoiceEmail...</span><br>
+│   │   └── <span class="file">AccountingServiceProvider.php</span><br>
+│   │<br>
+│   ├── <span class="dir">Inventory/</span><br>
+│   ├── <span class="dir">HR/</span><br>
+│   ├── <span class="dir">CRM/</span><br>
+│   ├── <span class="dir">Workflow/</span><br>
+│   └── <span class="dir">Custom/</span>                      <span class="cmt">← user-defined DocTypes</span><br>
+│<br>
+├── <span class="dir">database/migrations/</span><br>
+│   ├── <span class="file">0001_create_tenants_table.php</span><br>
+│   ├── <span class="file">0002_create_doc_types_table.php</span><br>
+│   ├── <span class="file">0003_create_doc_fields_table.php</span><br>
+│   ├── <span class="file">0004_create_doc_permissions_table.php</span><br>
+│   └── <span class="file">0005_create_audit_logs_table.php</span><br>
+│<br>
+└── <span class="dir">config/</span><br>
+    ├── <span class="file">platform.php</span>                 <span class="cmt">← platform-wide settings</span><br>
+    └── <span class="file">tenancy.php</span>                  <span class="cmt">← stancl/tenancy config</span><br>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== DOCTYPE ===== -->
+<div id="doctype" class="panel">
+  <div class="panel-header">
+    <div class="panel-title">DocType Engine</div>
+    <div class="panel-sub">Metadata-driven core — trái tim của platform</div>
+  </div>
+  <div class="panel-body">
+
+    <div class="section-title">DocTypeRegistry — Schema Cache</div>
+    <div class="code-label">app/Core/Services/DocTypeRegistry.php</div>
+    <div class="code">
+<span class="kw">class</span> <span class="cl">DocTypeRegistry</span>
+{
+    <span class="kw">private static</span> array $cache = [];
+
+    <span class="cm">/** Load schema từ Redis cache, fallback về DB */</span>
+    <span class="kw">public static function</span> <span class="fn">get</span>(<span class="nb">string</span> $doctypeName): <span class="cl">DocType</span>
+    {
+        <span class="kw">if</span> (<span class="kw">isset</span>(self::$cache[$doctypeName])) {
+            <span class="kw">return</span> self::$cache[$doctypeName];
+        }
+
+        $cacheKey = <span class="str">"doctype.schema.{$doctypeName}"</span>;
+
+        $schema = <span class="cl">Cache</span>::<span class="fn">remember</span>($cacheKey, now()-><span class="fn">addHours</span>(<span class="nb">24</span>), <span class="kw">fn</span>() =>
+            <span class="cl">DocType</span>::<span class="fn">with</span>([<span class="str">'fields'</span>, <span class="str">'permissions'</span>])
+                   -><span class="fn">where</span>(<span class="str">'name'</span>, $doctypeName)
+                   -><span class="fn">firstOrFail</span>()
+        );
+
+        self::$cache[$doctypeName] = $schema;
+        <span class="kw">return</span> $schema;
+    }
+
+    <span class="cm">/** Đăng ký controller cho module */</span>
+    <span class="kw">public static function</span> <span class="fn">register</span>(<span class="nb">string</span> $doctype, <span class="nb">string</span> $controllerClass): <span class="nb">void</span>
+    {
+        <span class="fn">app</span>()-><span class="fn">bind</span>(<span class="str">"doctype.controller.{$doctype}"</span>, $controllerClass);
+    }
+
+    <span class="kw">public static function</span> <span class="fn">getController</span>(<span class="nb">string</span> $doctype): <span class="cl">DocumentController</span>
+    {
+        $key = <span class="str">"doctype.controller.{$doctype}"</span>;
+        <span class="kw">return</span> <span class="fn">app</span>()-><span class="fn">has</span>($key)
+            ? <span class="fn">app</span>($key)
+            : <span class="fn">app</span>(<span class="cl">DefaultDocumentController</span>::<span class="kw">class</span>);
+    }
+
+    <span class="cm">/** Clear cache khi DocType thay đổi */</span>
+    <span class="kw">public static function</span> <span class="fn">clearCache</span>(<span class="nb">string</span> $doctype): <span class="nb">void</span>
+    {
+        <span class="cl">Cache</span>::<span class="fn">forget</span>(<span class="str">"doctype.schema.{$doctype}"</span>);
+        unset(self::$cache[$doctype]);
+    }
+}
+    </div>
+
+    <div class="section-title">DocumentService — Generic CRUD</div>
+    <div class="code-label">app/Core/Services/DocumentService.php</div>
+    <div class="code">
+<span class="kw">class</span> <span class="cl">DocumentService</span>
+{
+    <span class="kw">public function</span> <span class="fn">__construct</span>(
+        <span class="kw">private</span> <span class="cl">PermissionService</span> $permission,
+        <span class="kw">private</span> <span class="cl">AuditService</span>      $audit,
+    ) {}
+
+    <span class="kw">public function</span> <span class="fn">save</span>(<span class="nb">string</span> $doctype, array $data, <span class="cl">User</span> $user): array
+    {
+        $schema     = <span class="cl">DocTypeRegistry</span>::<span class="fn">get</span>($doctype);
+        $controller = <span class="cl">DocTypeRegistry</span>::<span class="fn">getController</span>($doctype);
+        $doc        = <span class="kw">new</span> <span class="cl">Document</span>($schema, $data);
+
+        <span class="cm">// Permission check</span>
+        $this->permission-><span class="fn">assertCanWrite</span>($doctype, $user);
+
+        <span class="cm">// Lifecycle hooks</span>
+        $controller-><span class="fn">validate</span>($doc);
+        $controller-><span class="fn">beforeSave</span>($doc);
+
+        <span class="cm">// Persist</span>
+        $isNew  = empty($data[<span class="str">'name'</span>]);
+        $result = <span class="cl">DB</span>::<span class="fn">table</span>($schema-><span class="fn">getTable</span>())
+                    -><span class="fn">updateOrInsert</span>([<span class="str">'name'</span> => $doc->name], $doc-><span class="fn">toArray</span>());
+
+        <span class="cm">// Audit trail</span>
+        $this->audit-><span class="fn">log</span>($doctype, $doc->name, $isNew ? <span class="str">'create'</span> : <span class="str">'update'</span>, $data, $user);
+
+        <span class="cm">// After save hook + event</span>
+        $controller-><span class="fn">afterSave</span>($doc);
+        <span class="cl">Event</span>::<span class="fn">dispatch</span>(<span class="kw">new</span> <span class="cl">DocumentSaved</span>($doctype, $doc, $user));
+
+        <span class="kw">return</span> $doc-><span class="fn">toArray</span>();
+    }
+
+    <span class="kw">public function</span> <span class="fn">submit</span>(<span class="nb">string</span> $doctype, <span class="nb">string</span> $name, <span class="cl">User</span> $user): array
+    {
+        $schema     = <span class="cl">DocTypeRegistry</span>::<span class="fn">get</span>($doctype);
+        $controller = <span class="cl">DocTypeRegistry</span>::<span class="fn">getController</span>($doctype);
+
+        <span class="kw">if</span> (!$schema->is_submittable) {
+            <span class="kw">throw new</span> <span class="cl">LogicException</span>(<span class="str">"{$doctype} không thể submit"</span>);
+        }
+
+        $doc = $this-><span class="fn">get</span>($doctype, $name, $user);
+        <span class="cl">DB</span>::<span class="fn">table</span>($schema-><span class="fn">getTable</span>())-><span class="fn">where</span>(<span class="str">'name'</span>, $name)-><span class="fn">update</span>([<span class="str">'docstatus'</span> => <span class="nb">1</span>]);
+
+        $controller-><span class="fn">onSubmit</span>($doc);
+        $this->audit-><span class="fn">log</span>($doctype, $name, <span class="str">'submit'</span>, [], $user);
+        <span class="cl">Event</span>::<span class="fn">dispatch</span>(<span class="kw">new</span> <span class="cl">DocumentSubmitted</span>($doctype, $doc, $user));
+
+        <span class="kw">return</span> $doc-><span class="fn">toArray</span>();
+    }
+}
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== EVENT BUS ===== -->
+<div id="eventbus" class="panel">
+  <div class="panel-header">
+    <div class="panel-title">Event Bus — Loose Coupling</div>
+    <div class="panel-sub">Mọi side effect đi qua events. Modules không bao giờ gọi nhau trực tiếp.</div>
+  </div>
+  <div class="panel-body">
+
+    <div class="highlight">
+      Nguyên tắc vàng: khi InvoiceSubmitted, module Accounting KHÔNG được gọi thẳng EmailService hay SlackService. Nó chỉ dispatch event. Mọi module subscribe tự xử lý.
+    </div>
+
+    <div class="section-title">Platform Events — event catalog</div>
+    <div class="code-label">app/Core/Events/ — danh sách events chuẩn</div>
+    <div class="code">
+<span class="cm">// Document lifecycle events (tự động dispatch bởi DocumentService)</span>
+<span class="kw">class</span> <span class="cl">DocumentCreated</span>  { <span class="kw">public function</span> <span class="fn">__construct</span>(<span class="kw">public</span> <span class="nb">readonly</span> <span class="nb">string</span> $doctype, <span class="kw">public</span> <span class="nb">readonly</span> <span class="cl">Document</span> $doc, <span class="kw">public</span> <span class="nb">readonly</span> <span class="cl">User</span> $user) {} }
+<span class="kw">class</span> <span class="cl">DocumentUpdated</span>  { <span class="cm">/* ... */</span> }
+<span class="kw">class</span> <span class="cl">DocumentSubmitted</span>{ <span class="cm">/* ... */</span> }
+<span class="kw">class</span> <span class="cl">DocumentCancelled</span>{ <span class="cm">/* ... */</span> }
+<span class="kw">class</span> <span class="cl">DocumentDeleted</span>  { <span class="cm">/* ... */</span> }
+
+<span class="cm">// Business events (dispatch bởi module controllers)</span>
+<span class="cm">// Accounting</span>
+<span class="kw">class</span> <span class="cl">InvoiceSubmitted</span>  { <span class="kw">public function</span> <span class="fn">__construct</span>(<span class="kw">public</span> <span class="cl">Document</span> $invoice) {} }
+<span class="kw">class</span> <span class="cl">PaymentReceived</span>   { <span class="cm">/* ... */</span> }
+<span class="kw">class</span> <span class="cl">GLEntriesPosted</span>   { <span class="cm">/* ... */</span> }
+
+<span class="cm">// Inventory</span>
+<span class="kw">class</span> <span class="cl">StockEntrySubmitted</span>{ <span class="cm">/* ... */</span> }
+<span class="kw">class</span> <span class="cl">StockLevelChanged</span>  { <span class="cm">/* ... */</span> }
+<span class="kw">class</span> <span class="cl">ReorderLevelReached</span>{ <span class="cm">/* ... */</span> }
+
+<span class="cm">// AI events</span>
+<span class="kw">class</span> <span class="cl">AIProcessingRequested</span>  { <span class="cm">/* ... */</span> }
+<span class="kw">class</span> <span class="cl">AIInsightGenerated</span>     { <span class="cm">/* ... */</span> }
+    </div>
+
+    <div class="section-title">SalesInvoice — đúng cách dùng Event Bus</div>
+    <div class="code-label">modules/Accounting/Controllers/SalesInvoiceController.php</div>
+    <div class="code">
+<span class="kw">class</span> <span class="cl">SalesInvoiceController</span> <span class="kw">extends</span> <span class="cl">BaseDocumentController</span>
+{
+    <span class="kw">public function</span> <span class="fn">onSubmit</span>(<span class="cl">Document</span> $invoice): <span class="nb">void</span>
+    {
+        <span class="cm">// ✓ ĐÚNG: chỉ dispatch event, không gọi service trực tiếp</span>
+        <span class="cl">Event</span>::<span class="fn">dispatch</span>(<span class="kw">new</span> <span class="cl">InvoiceSubmitted</span>($invoice));
+
+        <span class="cm">// ✗ SAI: gọi trực tiếp — coupling chặt, khó test, khó mở rộng</span>
+        <span class="cm">// $this->emailService->sendInvoice($invoice);</span>
+        <span class="cm">// $this->slackService->notify($invoice);</span>
+        <span class="cm">// $this->arService->updateLedger($invoice);</span>
+    }
+}
+
+<span class="cm">// Mỗi concern là một Listener riêng, đăng ký độc lập</span>
+<span class="kw">class</span> <span class="cl">PostGLEntriesListener</span> <span class="kw">implements</span> <span class="cl">ShouldQueue</span>
+{
+    <span class="kw">public function</span> <span class="fn">handle</span>(<span class="cl">InvoiceSubmitted</span> $event): <span class="nb">void</span>
+    {
+        <span class="fn">app</span>(<span class="cl">GLService</span>::<span class="kw">class</span>)-><span class="fn">postFromInvoice</span>($event->invoice);
+    }
+}
+
+<span class="kw">class</span> <span class="cl">SendInvoiceEmailListener</span> <span class="kw">implements</span> <span class="cl">ShouldQueue</span>
+{
+    <span class="kw">public function</span> <span class="fn">handle</span>(<span class="cl">InvoiceSubmitted</span> $event): <span class="nb">void</span>
+    {
+        <span class="cl">Mail</span>::<span class="fn">to</span>($event->invoice->customer_email)
+            -><span class="fn">queue</span>(<span class="kw">new</span> <span class="cl">InvoiceEmail</span>($event->invoice));
+    }
+}
+
+<span class="cm">// 5 năm nữa thêm AI module — KHÔNG sửa một dòng code cũ nào</span>
+<span class="kw">class</span> <span class="cl">AIInvoiceAnalysisListener</span> <span class="kw">implements</span> <span class="cl">ShouldQueue</span>
+{
+    <span class="kw">public function</span> <span class="fn">handle</span>(<span class="cl">InvoiceSubmitted</span> $event): <span class="nb">void</span>
+    {
+        <span class="cm">// Tự động phân tích anomaly, đề xuất upsell, dự báo payment...</span>
+        <span class="fn">app</span>(<span class="cl">AIAnalysisService</span>::<span class="kw">class</span>)-><span class="fn">analyzeInvoice</span>($event->invoice);
+    }
+}
+    </div>
+
+    <div class="section-title">EventServiceProvider — đăng ký listeners</div>
+    <div class="code">
+<span class="kw">protected</span> $listen = [
+    <span class="cl">InvoiceSubmitted</span>::<span class="kw">class</span> => [
+        <span class="cl">PostGLEntriesListener</span>::<span class="kw">class</span>,       <span class="cm">// Accounting module</span>
+        <span class="cl">UpdateARLedgerListener</span>::<span class="kw">class</span>,      <span class="cm">// Accounting module</span>
+        <span class="cl">SendInvoiceEmailListener</span>::<span class="kw">class</span>,    <span class="cm">// Notification module</span>
+        <span class="cl">NotifySlackListener</span>::<span class="kw">class</span>,         <span class="cm">// Integration module</span>
+        <span class="cl">AIInvoiceAnalysisListener</span>::<span class="kw">class</span>,   <span class="cm">// AI module — thêm sau, không sửa gì</span>
+        <span class="cl">BroadcastInvoiceSubmitted</span>::<span class="kw">class</span>,   <span class="cm">// WebSocket realtime</span>
+    ],
+];
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== PERMISSION ===== -->
+<div id="permission" class="panel">
+  <div class="panel-header">
+    <div class="panel-title">Permission Engine — Field-level RBAC</div>
+    <div class="panel-sub">Granular đến từng field, từng action, từng role</div>
+  </div>
+  <div class="panel-body">
+
+    <div class="section-title">Permission matrix</div>
+    <table class="tbl">
+      <tr><th>Level</th><th>Kiểm soát</th><th>Ví dụ Pascal Group</th></tr>
+      <tr><td>DocType</td><td>read / write / create / delete / submit / cancel</td><td>Chỉ CFO mới submit Sales Invoice</td></tr>
+      <tr><td>Field</td><td>permlevel 0-9 (cao hơn = hạn chế hơn)</td><td>permlevel=2: ẩn field "salary" với HR staff thường</td></tr>
+      <tr><td>Document</td><td>owner / role / workflow_state</td><td>Chỉ sửa được document của mình khi còn Draft</td></tr>
+      <tr><td>Tenant</td><td>cross-tenant isolation</td><td>CoreStack không thấy data VeriChain</td></tr>
+    </table>
+
+    <div class="section-title">PermissionService</div>
+    <div class="code-label">app/Core/Services/PermissionService.php</div>
+    <div class="code">
+<span class="kw">class</span> <span class="cl">PermissionService</span>
+{
+    <span class="kw">public function</span> <span class="fn">can</span>(<span class="nb">string</span> $doctype, <span class="nb">string</span> $action, <span class="cl">User</span> $user): <span class="nb">bool</span>
+    {
+        $cacheKey = <span class="str">"perm.{$user->id}.{$doctype}.{$action}"</span>;
+
+        <span class="kw">return</span> <span class="cl">Cache</span>::<span class="fn">remember</span>($cacheKey, <span class="nb">300</span>, <span class="kw">fn</span>() =>
+            <span class="cl">DocPermission</span>::<span class="fn">where</span>(<span class="str">'doctype'</span>, $doctype)
+                -><span class="fn">where</span>(<span class="str">'role'</span>, $user-><span class="fn">getRoleForTenant</span>())
+                -><span class="fn">where</span>($action, <span class="kw">true</span>)
+                -><span class="fn">exists</span>()
+        );
+    }
+
+    <span class="cm">/** Filter fields theo permlevel của user */</span>
+    <span class="kw">public function</span> <span class="fn">filterFields</span>(array $data, <span class="cl">DocType</span> $schema, <span class="cl">User</span> $user): array
+    {
+        $maxLevel = $this-><span class="fn">getPermLevel</span>($schema->name, $user);
+
+        $allowedFields = $schema->fields
+            -><span class="fn">where</span>(<span class="str">'permlevel'</span>, <span class="str">'<='</span>, $maxLevel)
+            -><span class="fn">pluck</span>(<span class="str">'fieldname'</span>)
+            -><span class="fn">toArray</span>();
+
+        <span class="kw">return</span> <span class="fn">array_intersect_key</span>($data, <span class="fn">array_flip</span>($allowedFields));
+    }
+
+    <span class="kw">public function</span> <span class="fn">assertCanWrite</span>(<span class="nb">string</span> $doctype, <span class="cl">User</span> $user): <span class="nb">void</span>
+    {
+        <span class="kw">if</span> (!$this-><span class="fn">can</span>($doctype, <span class="str">'write'</span>, $user)) {
+            <span class="kw">throw new</span> <span class="cl">AuthorizationException</span>(
+                <span class="str">"Không có quyền write {$doctype}"</span>
+            );
+        }
+    }
+}
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== TENANT ===== -->
+<div id="tenant" class="panel">
+  <div class="panel-header">
+    <div class="panel-title">Multi-tenant Architecture</div>
+    <div class="panel-sub">Database-per-tenant · Pascal Group holding view · SaaS-ready</div>
+  </div>
+  <div class="panel-body">
+
+    <div class="section-title">Chiến lược: Database per Tenant</div>
+    <div class="card-grid">
+      <div class="card" style="border-color:var(--purple)">
+        <div class="card-title" style="color:var(--purple-light)">Central Database</div>
+        <p style="font-size:12px;margin:0">tenants, users (global), tenant_users, billing, subscriptions. Không chứa business data.</p>
+      </div>
+      <div class="card" style="border-color:var(--teal)">
+        <div class="card-title" style="color:var(--teal)">Tenant Database (×15)</div>
+        <p style="font-size:12px;margin:0">pascal_corestack, pascal_verichain... Mỗi DB có đầy đủ schema: doc_types, doc_fields, business tables.</p>
+      </div>
+    </div>
+
+    <div class="section-title">Holding Dashboard — Cross-tenant Query</div>
+    <div class="code-label">app/Core/Services/HoldingDashboardService.php</div>
+    <div class="code">
+<span class="kw">class</span> <span class="cl">HoldingDashboardService</span>
+{
+    <span class="cm">/** Consolidated P&L cho toàn bộ Pascal Group */</span>
+    <span class="kw">public function</span> <span class="fn">consolidatedRevenue</span>(<span class="nb">string</span> $period): array
+    {
+        <span class="kw">return</span> <span class="cl">Tenant</span>::<span class="fn">active</span>()-><span class="fn">get</span>()-><span class="fn">map</span>(<span class="kw">function</span>(<span class="cl">Tenant</span> $tenant) <span class="kw">use</span> ($period) {
+            <span class="kw">return</span> $tenant-><span class="fn">run</span>(<span class="kw">fn</span>() => [
+                <span class="str">'company'</span>  => $tenant->name,
+                <span class="str">'revenue'</span>  => <span class="cl">DB</span>::<span class="fn">table</span>(<span class="str">'gl_entries'</span>)
+                    -><span class="fn">where</span>(<span class="str">'account_type'</span>, <span class="str">'Income'</span>)
+                    -><span class="fn">where</span>(<span class="str">'fiscal_year'</span>, $period)
+                    -><span class="fn">sum</span>(<span class="str">'credit'</span>),
+                <span class="str">'expenses'</span> => <span class="cl">DB</span>::<span class="fn">table</span>(<span class="str">'gl_entries'</span>)
+                    -><span class="fn">where</span>(<span class="str">'account_type'</span>, <span class="str">'Expense'</span>)
+                    -><span class="fn">where</span>(<span class="str">'fiscal_year'</span>, $period)
+                    -><span class="fn">sum</span>(<span class="str">'debit'</span>),
+            ]);
+        })-><span class="fn">toArray</span>();
+    }
+
+    <span class="cm">/** KPI tổng hợp — push lên ClickHouse để query nhanh */</span>
+    <span class="kw">public function</span> <span class="fn">syncToClickHouse</span>(): <span class="nb">void</span>
+    {
+        $data = $this-><span class="fn">consolidatedRevenue</span>(<span class="fn">date</span>(<span class="str">'Y'</span>));
+        <span class="cm">// Push sang ClickHouse cho dashboard nhanh</span>
+        <span class="fn">app</span>(<span class="cl">ClickHouseClient</span>::<span class="kw">class</span>)-><span class="fn">insert</span>(<span class="str">'holding_kpi'</span>, $data);
+    }
+}
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== API ===== -->
+<div id="api" class="panel">
+  <div class="panel-header">
+    <div class="panel-title">Auto API + Versioning</div>
+    <div class="panel-sub">Generic ResourceController tự động expose mọi DocType. Versioned từ ngày 1.</div>
+  </div>
+  <div class="panel-body">
+
+    <div class="section-title">ResourceController — 1 class cho mọi DocType</div>
+    <div class="code-label">app/Http/Controllers/Api/V1/ResourceController.php</div>
+    <div class="code">
+<span class="kw">class</span> <span class="cl">ResourceController</span> <span class="kw">extends</span> <span class="cl">Controller</span>
+{
+    <span class="kw">public function</span> <span class="fn">__construct</span>(<span class="kw">private</span> <span class="cl">DocumentService</span> $documents) {}
+
+    <span class="kw">public function</span> <span class="fn">index</span>(<span class="cl">Request</span> $request, <span class="nb">string</span> $doctype): <span class="cl">JsonResponse</span>
+    {
+        $schema = <span class="cl">DocTypeRegistry</span>::<span class="fn">get</span>($doctype);
+        $query  = <span class="cl">DB</span>::<span class="fn">table</span>($schema-><span class="fn">getTable</span>());
+
+        <span class="cm">// Dynamic filtering: ?filters[status]=Open&filters[customer]=Acme</span>
+        <span class="kw">foreach</span> ($request-><span class="fn">input</span>(<span class="str">'filters'</span>, []) <span class="kw">as</span> $field => $value) {
+            $query-><span class="fn">where</span>($field, $value);
+        }
+
+        <span class="cm">// Field-level permission filter</span>
+        $fields = $this->permission-><span class="fn">getAllowedFields</span>($schema, <span class="fn">auth</span>()-><span class="fn">user</span>());
+        $query-><span class="fn">select</span>($fields);
+
+        <span class="kw">return</span> <span class="fn">response</span>()-><span class="fn">json</span>([
+            <span class="str">'data'</span>  => $query-><span class="fn">paginate</span>($request-><span class="fn">input</span>(<span class="str">'limit'</span>, <span class="nb">20</span>)),
+            <span class="str">'doctype'</span> => $doctype,
+        ]);
+    }
+
+    <span class="kw">public function</span> <span class="fn">store</span>(<span class="cl">Request</span> $request, <span class="nb">string</span> $doctype): <span class="cl">JsonResponse</span>
+    {
+        $doc = $this->documents-><span class="fn">save</span>($doctype, $request-><span class="fn">all</span>(), <span class="fn">auth</span>()-><span class="fn">user</span>());
+        <span class="kw">return</span> <span class="fn">response</span>()-><span class="fn">json</span>([<span class="str">'data'</span> => $doc], <span class="nb">201</span>);
+    }
+
+    <span class="kw">public function</span> <span class="fn">submit</span>(<span class="nb">string</span> $doctype, <span class="nb">string</span> $name): <span class="cl">JsonResponse</span>
+    {
+        $doc = $this->documents-><span class="fn">submit</span>($doctype, $name, <span class="fn">auth</span>()-><span class="fn">user</span>());
+        <span class="kw">return</span> <span class="fn">response</span>()-><span class="fn">json</span>([<span class="str">'data'</span> => $doc]);
+    }
+}
+    </div>
+
+    <div class="section-title">API Endpoints — tự động cho mọi DocType</div>
+    <table class="tbl">
+      <tr><th>Method</th><th>URL</th><th>Action</th></tr>
+      <tr><td>GET</td><td>/api/v1/resource/sales_invoice</td><td>Danh sách, filter, sort, paginate</td></tr>
+      <tr><td>POST</td><td>/api/v1/resource/sales_invoice</td><td>Tạo mới, chạy validate + beforeSave</td></tr>
+      <tr><td>GET</td><td>/api/v1/resource/sales_invoice/INV-001</td><td>Chi tiết, filter field theo permission</td></tr>
+      <tr><td>PUT</td><td>/api/v1/resource/sales_invoice/INV-001</td><td>Cập nhật, chỉ khi docstatus=0</td></tr>
+      <tr><td>POST</td><td>/api/v1/resource/sales_invoice/INV-001/submit</td><td>Submit → onSubmit hook → dispatch event</td></tr>
+      <tr><td>POST</td><td>/api/v1/resource/sales_invoice/INV-001/cancel</td><td>Cancel → onCancel hook → reverse entries</td></tr>
+      <tr><td>DELETE</td><td>/api/v1/resource/sales_invoice/INV-001</td><td>Xóa, chỉ khi docstatus=0</td></tr>
+    </table>
+
+  </div>
+</div>
+
+<!-- ===== MCP ===== -->
+<div id="mcp" class="panel">
+  <div class="panel-header">
+    <div class="panel-title">MCP Layer — AI-native từ Architecture</div>
+    <div class="panel-sub">Model Context Protocol · AI agents tương tác với platform như một human user</div>
+  </div>
+  <div class="panel-body">
+
+    <div class="highlight">
+      MCP (Model Context Protocol) là chuẩn mở của Anthropic, đang trở thành cách AI agents tương tác với external systems. Platform có MCP server → bất kỳ AI agent nào cũng có thể dùng platform của anh mà không cần custom integration.
+    </div>
+
+    <div class="section-title">MCPServer — tự expose mọi DocType</div>
+    <div class="code-label">app/MCP/MCPServer.php</div>
+    <div class="code">
+<span class="kw">class</span> <span class="cl">MCPServer</span>
+{
+    <span class="cm">/** List available tools — tự động từ registered DocTypes */</span>
+    <span class="kw">public function</span> <span class="fn">tools</span>(): array
+    {
+        $doctypes = <span class="cl">DocType</span>::<span class="fn">all</span>();
+
+        <span class="kw">return</span> $doctypes-><span class="fn">flatMap</span>(<span class="kw">fn</span>($dt) => [
+            [
+                <span class="str">'name'</span>        => <span class="str">"get_{$dt->name}"</span>,
+                <span class="str">'description'</span> => <span class="str">"Lấy danh sách {$dt->label}"</span>,
+                <span class="str">'inputSchema'</span> => $this-><span class="fn">buildListSchema</span>($dt),
+            ],
+            [
+                <span class="str">'name'</span>        => <span class="str">"create_{$dt->name}"</span>,
+                <span class="str">'description'</span> => <span class="str">"Tạo mới {$dt->label}"</span>,
+                <span class="str">'inputSchema'</span> => $this-><span class="fn">buildCreateSchema</span>($dt),
+            ],
+            <span class="cm">// submit, cancel nếu DocType is_submittable</span>
+            ...$dt->is_submittable ? [[
+                <span class="str">'name'</span>        => <span class="str">"submit_{$dt->name}"</span>,
+                <span class="str">'description'</span> => <span class="str">"Submit {$dt->label}"</span>,
+                <span class="str">'inputSchema'</span> => [<span class="str">'type'</span> => <span class="str">'object'</span>, <span class="str">'properties'</span> => [<span class="str">'name'</span> => [<span class="str">'type'</span> => <span class="str">'string'</span>]]],
+            ]] : [],
+        ])-><span class="fn">values</span>()-><span class="fn">toArray</span>();
+    }
+
+    <span class="cm">/** Execute tool call từ AI agent */</span>
+    <span class="kw">public function</span> <span class="fn">execute</span>(<span class="nb">string</span> $tool, array $input, <span class="cl">User</span> $agent): array
+    {
+        [$action, $doctype] = <span class="fn">explode</span>(<span class="str">'_'</span>, $tool, <span class="nb">2</span>);
+
+        <span class="kw">return</span> <span class="kw">match</span>($action) {
+            <span class="str">'get'</span>    => <span class="fn">app</span>(<span class="cl">DocumentService</span>::<span class="kw">class</span>)-><span class="fn">list</span>($doctype, $input, $agent),
+            <span class="str">'create'</span> => <span class="fn">app</span>(<span class="cl">DocumentService</span>::<span class="kw">class</span>)-><span class="fn">save</span>($doctype, $input, $agent),
+            <span class="str">'submit'</span> => <span class="fn">app</span>(<span class="cl">DocumentService</span>::<span class="kw">class</span>)-><span class="fn">submit</span>($doctype, $input[<span class="str">'name'</span>], $agent),
+            <span class="kw">default</span>  => <span class="kw">throw new</span> <span class="cl">InvalidArgumentException</span>(<span class="str">"Unknown tool: {$tool}"</span>),
+        };
+    }
+}
+    </div>
+
+    <div class="section-title">Use case thực tế — AI agent xử lý Invoice</div>
+    <div class="code-label">Workflow tự động không cần human intervention</div>
+    <div class="code">
+<span class="cm">/*
+ * Scenario: Email vendor gửi invoice PDF vào hệ thống
+ * AI agent tự động:
+ * 1. Parse PDF bằng Claude
+ * 2. Tạo Purchase Invoice qua MCP
+ * 3. Match với Purchase Order
+ * 4. Submit nếu match OK
+ * 5. Route to human nếu có discrepancy
+ */</span>
+
+<span class="cm">// Claude API call với MCP tools</span>
+$response = $anthropic->messages->create([
+    <span class="str">'model'</span>   => <span class="str">'claude-sonnet-4-6'</span>,
+    <span class="str">'tools'</span>   => $mcpServer-><span class="fn">tools</span>(),  <span class="cm">// tự động include mọi DocType</span>
+    <span class="str">'messages'</span> => [[
+        <span class="str">'role'</span>    => <span class="str">'user'</span>,
+        <span class="str">'content'</span> => <span class="str">'Xử lý invoice đính kèm và tạo Purchase Invoice trong hệ thống'</span>,
+    ]],
+]);
+
+<span class="cm">// Claude sẽ tự gọi: get_purchase_order → create_purchase_invoice → submit_purchase_invoice</span>
+<span class="cm">// Không cần viết một dòng integration code nào</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== AUDIT ===== -->
+<div id="audit" class="panel">
+  <div class="panel-header">
+    <div class="panel-title">Audit Trail — Ghi Lại Mọi Thứ</div>
+    <div class="panel-sub">Ai sửa gì, khi nào, trước/sau là gì — không có exception</div>
+  </div>
+  <div class="panel-body">
+
+    <div class="warning">
+      Không có audit trail = không có accountability. Với holding 15 subsidiaries, đây là bắt buộc — không phải optional.
+    </div>
+
+    <div class="section-title">AuditService</div>
+    <div class="code-label">app/Core/Services/AuditService.php</div>
+    <div class="code">
+<span class="kw">class</span> <span class="cl">AuditService</span>
+{
+    <span class="kw">public function</span> <span class="fn">log</span>(
+        <span class="nb">string</span> $doctype,
+        <span class="nb">string</span> $docname,
+        <span class="nb">string</span> $action,
+        array  $data,
+        <span class="cl">User</span>   $user,
+        ?array $before = <span class="kw">null</span>
+    ): <span class="nb">void</span> {
+        <span class="cm">// Ghi vào MySQL (realtime lookup)</span>
+        <span class="cl">DB</span>::<span class="fn">table</span>(<span class="str">'audit_logs'</span>)-><span class="fn">insert</span>([
+            <span class="str">'id'</span>          => <span class="cl">Str</span>::<span class="fn">uuid</span>(),
+            <span class="str">'doctype'</span>     => $doctype,
+            <span class="str">'docname'</span>     => $docname,
+            <span class="str">'action'</span>      => $action,
+            <span class="str">'user_id'</span>     => $user->id,
+            <span class="str">'user_email'</span>  => $user->email,
+            <span class="str">'ip_address'</span>  => <span class="fn">request</span>()-><span class="fn">ip</span>(),
+            <span class="str">'user_agent'</span>  => <span class="fn">request</span>()-><span class="fn">userAgent</span>(),
+            <span class="str">'before_data'</span> => $before ? <span class="fn">json_encode</span>($before) : <span class="kw">null</span>,
+            <span class="str">'after_data'</span>  => <span class="fn">json_encode</span>($data),
+            <span class="str">'diff'</span>        => $before ? <span class="fn">json_encode</span>($this-><span class="fn">diff</span>($before, $data)) : <span class="kw">null</span>,
+            <span class="str">'created_at'</span>  => <span class="fn">now</span>(),
+        ]);
+
+        <span class="cm">// Push sang ClickHouse async cho analytics</span>
+        <span class="cl">PushAuditToClickHouse</span>::<span class="fn">dispatch</span>([
+            <span class="str">'doctype'</span> => $doctype, <span class="str">'action'</span> => $action,
+            <span class="str">'user_id'</span> => $user->id, <span class="str">'ts'</span> => <span class="fn">now</span>(),
+        ]);
+    }
+
+    <span class="kw">private function</span> <span class="fn">diff</span>(array $before, array $after): array
+    {
+        $changes = [];
+        <span class="kw">foreach</span> ($after <span class="kw">as</span> $key => $value) {
+            <span class="kw">if</span> (<span class="fn">array_key_exists</span>($key, $before) && $before[$key] !== $value) {
+                $changes[$key] = [<span class="str">'from'</span> => $before[$key], <span class="str">'to'</span> => $value];
+            }
+        }
+        <span class="kw">return</span> $changes;
+    }
+}
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== MIGRATIONS ===== -->
+<div id="migrations" class="panel">
+  <div class="panel-header">
+    <div class="panel-title">Migration Files — Database Schema</div>
+    <div class="panel-sub">Copy và chạy ngay — đây là foundation của toàn bộ platform</div>
+  </div>
+  <div class="panel-body">
+
+    <div class="code-label">0001 — Tenants (Central DB)</div>
+    <div class="code">
+<span class="cl">Schema</span>::<span class="fn">create</span>(<span class="str">'tenants'</span>, <span class="kw">function</span>(<span class="cl">Blueprint</span> $table) {
+    $table-><span class="fn">string</span>(<span class="str">'id'</span>)-><span class="fn">primary</span>();     <span class="cm">// slug: pascal_corestack</span>
+    $table-><span class="fn">string</span>(<span class="str">'name'</span>);              <span class="cm">// CoreStack</span>
+    $table-><span class="fn">string</span>(<span class="str">'db_name'</span>);           <span class="cm">// pascal_corestack</span>
+    $table-><span class="fn">string</span>(<span class="str">'plan'</span>)-><span class="fn">default</span>(<span class="str">'starter'</span>);
+    $table-><span class="fn">boolean</span>(<span class="str">'is_active'</span>)-><span class="fn">default</span>(<span class="kw">true</span>);
+    $table-><span class="fn">json</span>(<span class="str">'settings'</span>)-><span class="fn">nullable</span>();  <span class="cm">// timezone, currency, language...</span>
+    $table-><span class="fn">timestamps</span>();
+});
+
+<span class="cl">Schema</span>::<span class="fn">create</span>(<span class="str">'domains'</span>, <span class="kw">function</span>(<span class="cl">Blueprint</span> $table) {
+    $table-><span class="fn">id</span>();
+    $table-><span class="fn">string</span>(<span class="str">'tenant_id'</span>);
+    $table-><span class="fn">string</span>(<span class="str">'domain'</span>)-><span class="fn">unique</span>(); <span class="cm">// corestack.pascal.vn</span>
+    $table-><span class="fn">foreign</span>(<span class="str">'tenant_id'</span>)-><span class="fn">references</span>(<span class="str">'id'</span>)-><span class="fn">on</span>(<span class="str">'tenants'</span>);
+});
+    </div>
+
+    <div class="code-label">0002 — DocTypes (Tenant DB)</div>
+    <div class="code">
+<span class="cl">Schema</span>::<span class="fn">create</span>(<span class="str">'doc_types'</span>, <span class="kw">function</span>(<span class="cl">Blueprint</span> $table) {
+    $table-><span class="fn">id</span>();
+    $table-><span class="fn">string</span>(<span class="str">'name'</span>, <span class="nb">120</span>)-><span class="fn">unique</span>();   <span class="cm">// sales_invoice</span>
+    $table-><span class="fn">string</span>(<span class="str">'label'</span>, <span class="nb">120</span>);             <span class="cm">// Sales Invoice</span>
+    $table-><span class="fn">string</span>(<span class="str">'module'</span>, <span class="nb">60</span>);              <span class="cm">// accounting</span>
+    $table-><span class="fn">string</span>(<span class="str">'icon'</span>, <span class="nb">60</span>)-><span class="fn">nullable</span>();
+    $table-><span class="fn">boolean</span>(<span class="str">'is_submittable'</span>)-><span class="fn">default</span>(<span class="kw">false</span>);
+    $table-><span class="fn">boolean</span>(<span class="str">'is_single'</span>)-><span class="fn">default</span>(<span class="kw">false</span>);      <span class="cm">// singleton doc</span>
+    $table-><span class="fn">boolean</span>(<span class="str">'track_changes'</span>)-><span class="fn">default</span>(<span class="kw">true</span>);
+    $table-><span class="fn">boolean</span>(<span class="str">'is_custom'</span>)-><span class="fn">default</span>(<span class="kw">false</span>);      <span class="cm">// user-created</span>
+    $table-><span class="fn">json</span>(<span class="str">'settings'</span>)-><span class="fn">nullable</span>();
+    $table-><span class="fn">timestamps</span>();
+});
+    </div>
+
+    <div class="code-label">0003 — DocFields (Tenant DB)</div>
+    <div class="code">
+<span class="cl">Schema</span>::<span class="fn">create</span>(<span class="str">'doc_fields'</span>, <span class="kw">function</span>(<span class="cl">Blueprint</span> $table) {
+    $table-><span class="fn">id</span>();
+    $table-><span class="fn">foreignId</span>(<span class="str">'doctype_id'</span>)-><span class="fn">constrained</span>(<span class="str">'doc_types'</span>)-><span class="fn">cascadeOnDelete</span>();
+    $table-><span class="fn">string</span>(<span class="str">'fieldname'</span>, <span class="nb">120</span>);
+    $table-><span class="fn">enum</span>(<span class="str">'fieldtype'</span>, [
+        <span class="str">'Data'</span>, <span class="str">'Int'</span>, <span class="str">'Float'</span>, <span class="str">'Currency'</span>, <span class="str">'Percent'</span>,
+        <span class="str">'Text'</span>, <span class="str">'Long Text'</span>, <span class="str">'Date'</span>, <span class="str">'Datetime'</span>, <span class="str">'Time'</span>,
+        <span class="str">'Select'</span>, <span class="str">'Link'</span>, <span class="str">'Table'</span>, <span class="str">'Attach'</span>, <span class="str">'Check'</span>,
+        <span class="str">'Section Break'</span>, <span class="str">'Column Break'</span>, <span class="str">'HTML'</span>,
+    ]);
+    $table-><span class="fn">string</span>(<span class="str">'label'</span>, <span class="nb">120</span>);
+    $table-><span class="fn">boolean</span>(<span class="str">'required'</span>)-><span class="fn">default</span>(<span class="kw">false</span>);
+    $table-><span class="fn">boolean</span>(<span class="str">'in_list_view'</span>)-><span class="fn">default</span>(<span class="kw">false</span>);
+    $table-><span class="fn">boolean</span>(<span class="str">'in_standard_filter'</span>)-><span class="fn">default</span>(<span class="kw">false</span>);
+    $table-><span class="fn">boolean</span>(<span class="str">'read_only'</span>)-><span class="fn">default</span>(<span class="kw">false</span>);
+    $table-><span class="fn">tinyInteger</span>(<span class="str">'permlevel'</span>)-><span class="fn">default</span>(<span class="nb">0</span>);        <span class="cm">// 0-9</span>
+    $table-><span class="fn">json</span>(<span class="str">'options'</span>)-><span class="fn">nullable</span>();               <span class="cm">// link doctype / select values</span>
+    $table-><span class="fn">string</span>(<span class="str">'depends_on'</span>, <span class="nb">500</span>)-><span class="fn">nullable</span>();     <span class="cm">// eval:doc.status=='Open'</span>
+    $table-><span class="fn">string</span>(<span class="str">'default'</span>, <span class="nb">255</span>)-><span class="fn">nullable</span>();
+    $table-><span class="fn">integer</span>(<span class="str">'sort_order'</span>)-><span class="fn">default</span>(<span class="nb">0</span>);
+    $table-><span class="fn">timestamps</span>();
+});
+    </div>
+
+    <div class="code-label">0004 — Audit Logs (Tenant DB)</div>
+    <div class="code">
+<span class="cl">Schema</span>::<span class="fn">create</span>(<span class="str">'audit_logs'</span>, <span class="kw">function</span>(<span class="cl">Blueprint</span> $table) {
+    $table-><span class="fn">uuid</span>(<span class="str">'id'</span>)-><span class="fn">primary</span>();
+    $table-><span class="fn">string</span>(<span class="str">'doctype'</span>, <span class="nb">120</span>);
+    $table-><span class="fn">string</span>(<span class="str">'docname'</span>, <span class="nb">255</span>);
+    $table-><span class="fn">enum</span>(<span class="str">'action'</span>, [<span class="str">'create'</span>, <span class="str">'update'</span>, <span class="str">'delete'</span>, <span class="str">'submit'</span>, <span class="str">'cancel'</span>, <span class="str">'login'</span>, <span class="str">'export'</span>]);
+    $table-><span class="fn">foreignId</span>(<span class="str">'user_id'</span>)-><span class="fn">nullable</span>();
+    $table-><span class="fn">string</span>(<span class="str">'user_email'</span>)-><span class="fn">nullable</span>();
+    $table-><span class="fn">ipAddress</span>(<span class="str">'ip_address'</span>)-><span class="fn">nullable</span>();
+    $table-><span class="fn">text</span>(<span class="str">'user_agent'</span>)-><span class="fn">nullable</span>();
+    $table-><span class="fn">json</span>(<span class="str">'before_data'</span>)-><span class="fn">nullable</span>();
+    $table-><span class="fn">json</span>(<span class="str">'after_data'</span>)-><span class="fn">nullable</span>();
+    $table-><span class="fn">json</span>(<span class="str">'diff'</span>)-><span class="fn">nullable</span>();               <span class="cm">// chỉ lưu fields thay đổi</span>
+    $table-><span class="fn">timestamp</span>(<span class="str">'created_at'</span>);
+
+    <span class="cm">// Index cho common queries</span>
+    $table-><span class="fn">index</span>([<span class="str">'doctype'</span>, <span class="str">'docname'</span>]);
+    $table-><span class="fn">index</span>([<span class="str">'user_id'</span>, <span class="str">'created_at'</span>]);
+    $table-><span class="fn">index</span>(<span class="str">'created_at'</span>);                    <span class="cm">// để purge old logs</span>
+});
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== ROADMAP ===== -->
+<div id="roadmap" class="panel">
+  <div class="panel-header">
+    <div class="panel-title">Roadmap 10 năm</div>
+    <div class="panel-sub">Core First → Port Gradually → SaaS → AI-native Platform</div>
+  </div>
+  <div class="panel-body">
+
+    <div class="timeline">
+      <div class="phase">
+        <div class="phase-dot" style="background:var(--purple);box-shadow:0 0 0 4px var(--purple-dim)"></div>
+        <div class="phase-card" style="border-color:var(--purple)">
+          <div class="phase-label">Năm 1 · Q1-Q2</div>
+          <div class="phase-name" style="color:var(--purple-light)">Foundation</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--purple)"></div>DocType Engine + Registry</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--purple)"></div>DocumentService + Lifecycle</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--purple)"></div>Event Bus + Permission</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--purple)"></div>Multi-tenant setup</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--purple)"></div>Auto REST API v1</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--purple)"></div>Audit Trail</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--purple)"></div>Filament admin UI</div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-dot" style="background:var(--teal);box-shadow:0 0 0 4px var(--teal-dim)"></div>
+        <div class="phase-card" style="border-color:var(--teal)">
+          <div class="phase-label">Năm 1 · Q3-Q4</div>
+          <div class="phase-name" style="color:var(--teal)">Core Modules</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--teal)"></div>CRM (Customer, Lead)</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--teal)"></div>HR basic (Employee)</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--teal)"></div>Item / Warehouse</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--teal)"></div>Custom DocType builder</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--teal)"></div>Workflow engine v1</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--teal)"></div>Pascal Group go-live</div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-dot" style="background:var(--amber);box-shadow:0 0 0 4px var(--amber-dim)"></div>
+        <div class="phase-card" style="border-color:var(--amber)">
+          <div class="phase-label">Năm 2-3</div>
+          <div class="phase-name" style="color:var(--amber)">Platform</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--amber)"></div>Accounting (GL, Invoice)</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--amber)"></div>Hóa đơn điện tử VN</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--amber)"></div>HTKK / thuế GTGT</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--amber)"></div>MCP Server v1</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--amber)"></div>ClickHouse analytics</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--amber)"></div>Holding dashboard</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--amber)"></div>Sunset ERPNext dần</div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-dot" style="background:var(--green);box-shadow:0 0 0 4px var(--green-dim)"></div>
+        <div class="phase-card" style="border-color:var(--green)">
+          <div class="phase-label">Năm 4-10</div>
+          <div class="phase-name" style="color:var(--green)">SaaS + AI</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--green)"></div>SaaS billing & onboarding</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--green)"></div>AI co-pilot (Claude)</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--green)"></div>MCP full ecosystem</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--green)"></div>Multi-agent workflows</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--green)"></div>Module marketplace</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--green)"></div>Mở rộng ra holding VN</div>
+          <div class="phase-item"><div class="phase-bullet" style="background:var(--green)"></div>Southeast Asia SaaS</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Milestone anh cần đạt ở tháng thứ 3</div>
+    <div class="highlight">
+      Sau 3 tháng, platform phải có: DocType Engine chạy được + 1 module (CRM hoặc HR) live cho ít nhất 1 subsidiary của Pascal Group. Nếu không đạt được milestone này, architecture cần được review lại.
+    </div>
+
+    <div class="section-title">Dấu hiệu architecture đang sai hướng</div>
+    <div class="decision no">✗ Module A import class từ Module B trực tiếp</div>
+    <div class="decision no">✗ Business logic nằm trong Controller thay vì Service</div>
+    <div class="decision no">✗ Không có event khi document thay đổi state</div>
+    <div class="decision no">✗ Permission check nằm rải rác, không tập trung</div>
+    <div class="decision no">✗ Tenant data có thể query từ tenant khác</div>
+    <div class="decision no">✗ Xây microservice khi chưa cần scale</div>
+
+    <div class="section-title" style="margin-top:24px">Dấu hiệu đang đúng hướng</div>
+    <div class="decision yes">✓ Thêm module mới không cần sửa Core</div>
+    <div class="decision yes">✓ Thêm listener mới không cần sửa controller cũ</div>
+    <div class="decision yes">✓ Thêm DocType mới qua UI, không deploy code</div>
+    <div class="decision yes">✓ AI agent có thể dùng platform qua MCP ngay</div>
+    <div class="decision yes">✓ Mọi thay đổi data đều có audit trail</div>
+
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+function toggle(el) {
+  el.classList.toggle('open');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+services:
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pascal_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks: [pascal]
+    depends_on:
+      db:    { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: pascal_nginx
+    restart: unless-stopped
+    ports: ["8000:80"]
+    volumes:
+      - .:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks: [pascal]
+    depends_on: [app]
+
+  db:
+    image: mysql:8.0
+    container_name: pascal_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE:      ${DB_DATABASE:-pascal}
+      MYSQL_USER:          ${DB_USERNAME:-pascal}
+      MYSQL_PASSWORD:      ${DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: rootsecret
+    ports: ["3306:3306"]
+    volumes: [pascal_db:/var/lib/mysql]
+    networks: [pascal]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: pascal_redis
+    restart: unless-stopped
+    ports: ["6379:6379"]
+    networks: [pascal]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: pascal_mail
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks: [pascal]
+
+networks:
+  pascal:
+    driver: bridge
+
+volumes:
+  pascal_db:
