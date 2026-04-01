@@ -86,7 +86,7 @@ docker compose exec app php artisan optimize:clear
 
 ## 2. Architecture Overview
 
-Pascal Platform follows the same philosophy as ERPNext — rebuilt on Laravel:
+Pascal Platform follows the same philosophy as Frappe — rebuilt on Laravel:
 
 | Principle | What it means |
 |-----------|---------------|
